@@ -80,12 +80,14 @@ class SelfAttentiveEncoder(nn.Module):
         compressed_embeddings = outp.view(-1, size[2])  # [bsz*len, nhid*2]
         transformed_inp = torch.transpose(inp, 0, 1).contiguous()  # [bsz, len]
         transformed_inp = transformed_inp.view(size[0], 1, size[1])  # [bsz, 1, len]
+        # 为后面的去除pad的影响做准备
         concatenated_inp = [transformed_inp for i in range(self.attention_hops)]
         concatenated_inp = torch.cat(concatenated_inp, 1)  # [bsz, hop, len]
 
         hbar = self.tanh(self.ws1(self.drop(compressed_embeddings)))  # [bsz*len, attention-unit]
         alphas = self.ws2(hbar).view(size[0], size[1], -1)  # [bsz, len, hop]
         alphas = torch.transpose(alphas, 1, 2).contiguous()  # [bsz, hop, len]
+        # 去除pad的影响
         penalized_alphas = alphas + (
             -10000 * (concatenated_inp == self.dictionary.word2idx['<pad>']).float())
             # [bsz, hop, len] + [bsz, hop, len]
